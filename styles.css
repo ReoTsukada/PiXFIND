@@ -1,0 +1,255 @@
+:root {
+  color-scheme: light;
+  --bg: #f5f6fb;
+  --panel: #ffffff;
+  --panel-shadow: 0 24px 40px -28px rgba(25, 45, 90, 0.45);
+  --accent: #ff6f8d;
+  --accent-dark: #f04f70;
+  --text: #1f2430;
+  --text-muted: #5b6374;
+  --border: rgba(40, 50, 80, 0.16);
+  font-family: "M PLUS Rounded 1c", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  font-size: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.app {
+  width: min(1100px, 100%);
+  padding: clamp(1.5rem, 3vw, 3.5rem);
+  display: grid;
+  place-items: stretch;
+}
+
+.screen {
+  display: grid;
+  gap: 2rem;
+}
+
+.screen--start {
+  justify-items: center;
+  text-align: center;
+}
+
+.panel {
+  max-width: 620px;
+  padding: clamp(2rem, 4vw, 3.5rem);
+  background: var(--panel);
+  border-radius: 32px;
+  box-shadow: var(--panel-shadow);
+  display: grid;
+  gap: 1.75rem;
+}
+
+.app-title {
+  margin: 0;
+  font-size: clamp(2.6rem, 6vw, 4rem);
+  letter-spacing: 0.08em;
+}
+
+.tagline {
+  margin: 0;
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.description {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 2.4rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.button:focus-visible {
+  outline: 3px solid rgba(255, 111, 141, 0.35);
+  outline-offset: 3px;
+}
+
+.button--primary {
+  color: #fff;
+  background: linear-gradient(130deg, #ff6f8d, #ff9ea0);
+  box-shadow: 0 18px 30px -16px rgba(255, 111, 141, 0.6);
+}
+
+.button--primary:hover {
+  transform: translateY(-2px);
+}
+
+.button--ghost {
+  color: var(--text);
+  background: transparent;
+  border-color: rgba(40, 50, 80, 0.18);
+}
+
+.button--ghost:hover {
+  background: rgba(40, 50, 80, 0.06);
+}
+
+.button--outline {
+  color: var(--accent);
+  background: rgba(255, 111, 141, 0.08);
+  border-color: rgba(255, 111, 141, 0.4);
+}
+
+.button--outline:hover {
+  background: rgba(255, 111, 141, 0.16);
+}
+
+.start-footer {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.screen--game {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+}
+
+.game-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.game-title {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  letter-spacing: 0.04em;
+}
+
+.game-controls {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.game-layout {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.stage {
+  background: var(--panel);
+  border-radius: 24px;
+  padding: 1.5rem;
+  box-shadow: var(--panel-shadow);
+  display: grid;
+  gap: 1rem;
+}
+
+.stage-title {
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.canvas-frame {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 20px;
+  border: 1px solid rgba(40, 50, 80, 0.14);
+  background: repeating-linear-gradient(45deg, #f7f7fb 0, #f7f7fb 12px, #eff0f6 12px, #eff0f6 24px);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.placeholder {
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.game-sidebar {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.status-card,
+.hint-card {
+  background: var(--panel);
+  border-radius: 20px;
+  box-shadow: var(--panel-shadow);
+  padding: 1.4rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.status-title {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+}
+
+.status-list {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.98rem;
+  color: var(--text-muted);
+}
+
+.status-item dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.hint-card p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .panel {
+    padding: 2rem 1.6rem;
+  }
+
+  .game-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .game-header {
+    align-items: flex-start;
+  }
+}
