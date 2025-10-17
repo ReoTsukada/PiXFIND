@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PiXFIND</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="app" class="app">
+      <section id="startScreen" class="screen screen--start" aria-labelledby="startTitle">
+        <div class="panel">
+          <h1 id="startTitle" class="app-title">PiXFIND</h1>
+          <p class="tagline">ドット絵の世界で、ピクセル単位の間違い探し</p>
+          <p class="description">
+            左右に並んだドット絵から異なるピクセルを見つけ出してください。準備ができたら「ゲームを始める」を押してスタート！
+          </p>
+          <button type="button" id="startButton" class="button button--primary">ゲームを始める</button>
+        </div>
+        <footer class="start-footer">
+          <p>問題用のドット絵は後から追加予定です。</p>
+        </footer>
+      </section>
+
+      <section id="gameScreen" class="screen screen--game" aria-labelledby="gameTitle" hidden>
+        <header class="game-header">
+          <h2 id="gameTitle" class="game-title">ラウンド 1</h2>
+          <div class="game-controls">
+            <button type="button" id="backButton" class="button button--ghost">タイトルに戻る</button>
+            <button type="button" id="resetButton" class="button button--outline">リセット</button>
+          </div>
+        </header>
+        <div class="game-layout">
+          <section class="stage" aria-label="左のドット絵">
+            <h3 class="stage-title">オリジナル</h3>
+            <div class="canvas-frame">
+              <div class="placeholder" aria-hidden="true">左の画像</div>
+            </div>
+          </section>
+          <section class="stage" aria-label="右のドット絵">
+            <h3 class="stage-title">チャレンジ</h3>
+            <div class="canvas-frame">
+              <div class="placeholder" aria-hidden="true">右の画像</div>
+            </div>
+          </section>
+        </div>
+        <aside class="game-sidebar">
+          <div class="status-card">
+            <h3 class="status-title">進行状況</h3>
+            <dl class="status-list">
+              <div class="status-item">
+                <dt>発見数</dt>
+                <dd><span id="foundCount">0</span> / <span id="totalCount">2</span></dd>
+              </div>
+              <div class="status-item">
+                <dt>タイマー</dt>
+                <dd id="timerLabel">00:00</dd>
+              </div>
+            </dl>
+          </div>
+          <div class="hint-card">
+            <h3 class="status-title">ヒント</h3>
+            <p id="hintText">間違いを見つけた場所をクリックしてマークしましょう。</p>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
