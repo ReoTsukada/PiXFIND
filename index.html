@@ -8,63 +8,80 @@
   </head>
   <body>
     <main id="app" class="app">
-      <section id="startScreen" class="screen screen--start" aria-labelledby="startTitle">
+      <section id="startScreen" class="screen screen--start" aria-labelledby="startTitle" aria-hidden="false">
         <div class="panel">
           <h1 id="startTitle" class="app-title">PiXFIND</h1>
           <p class="tagline">ドット絵の世界で、ピクセル単位の間違い探し</p>
           <p class="description">
-            左右に並んだドット絵から異なるピクセルを見つけ出してください。準備ができたら「ゲームを始める」を押してスタート！
+            左右に並んだドット絵から異なるピクセルを見つけ出してください。公式ラインナップを収録しているので、「ゲームを始める」で難易度を選んでお楽しみください。
           </p>
           <button type="button" id="startButton" class="button button--primary">ゲームを始める</button>
         </div>
         <footer class="start-footer">
-          <p>問題用のドット絵は後から追加予定です。</p>
+          <p>公式パズルは順次追加予定です。更新情報は PiXiEED の各種チャンネルでお知らせします。</p>
         </footer>
       </section>
 
-      <section id="gameScreen" class="screen screen--game" aria-labelledby="gameTitle" hidden>
+      <section id="difficultyScreen" class="screen screen--difficulty" aria-labelledby="difficultyTitle" aria-hidden="true" hidden>
+        <header class="difficulty-header">
+          <div>
+            <h2 id="difficultyTitle" class="section-title">難易度を選択</h2>
+            <p class="section-subtitle">星の数が多いほどキャンバスが大きく、間違いも複雑になります。</p>
+          </div>
+          <button type="button" id="difficultyBackButton" class="button button--ghost">タイトルに戻る</button>
+        </header>
+        <div class="difficulty-selector" role="radiogroup" aria-label="難易度">
+          <button type="button" class="difficulty-chip" data-difficulty="1" aria-pressed="false">★☆☆<span>（64×64px以内）</span></button>
+          <button type="button" class="difficulty-chip" data-difficulty="2" aria-pressed="false">★★☆<span>（128×128px以内）</span></button>
+          <button type="button" class="difficulty-chip" data-difficulty="3" aria-pressed="false">★★★<span>（それ以上）</span></button>
+        </div>
+        <section class="puzzle-gallery" aria-label="パズル一覧">
+          <h3 class="section-subtitle" id="puzzleGalleryTitle">パズルを選択</h3>
+          <div id="puzzleList" class="puzzle-list" role="list" aria-labelledby="puzzleGalleryTitle"></div>
+        </section>
+      </section>
+
+      <section id="gameScreen" class="screen screen--game" aria-labelledby="gameTitle" aria-hidden="true" hidden>
         <header class="game-header">
           <h2 id="gameTitle" class="game-title">ラウンド 1</h2>
           <div class="game-controls">
+            <button type="button" id="gameBackButton" class="button button--ghost">難易度選択に戻る</button>
             <button type="button" id="backButton" class="button button--ghost">タイトルに戻る</button>
             <button type="button" id="resetButton" class="button button--outline">リセット</button>
+          </div>
+          <div class="game-metrics">
+            <div class="status-card">
+              <div class="status-row">
+                <span class="status-label">発見数</span>
+                <span class="status-value"><span id="foundCount">0</span> / <span id="totalCount">2</span></span>
+              </div>
+              <div class="status-row">
+                <span class="status-label">タイマー</span>
+                <span class="status-value" id="timerLabel">00:00</span>
+              </div>
+            </div>
           </div>
         </header>
         <div class="game-layout">
           <section class="stage" aria-label="左のドット絵">
-            <h3 class="stage-title">オリジナル</h3>
             <div class="canvas-frame">
-              <div class="placeholder" aria-hidden="true">左の画像</div>
+              <canvas id="canvasOriginal" class="spot-canvas" aria-label="オリジナル画像"></canvas>
+              <div class="canvas-overlay" id="overlayOriginal" aria-hidden="true"></div>
             </div>
           </section>
           <section class="stage" aria-label="右のドット絵">
-            <h3 class="stage-title">チャレンジ</h3>
             <div class="canvas-frame">
-              <div class="placeholder" aria-hidden="true">右の画像</div>
+              <canvas id="canvasChallenge" class="spot-canvas" aria-label="チャレンジ画像"></canvas>
+              <div class="canvas-overlay" id="overlayChallenge" aria-hidden="true"></div>
             </div>
           </section>
         </div>
-        <aside class="game-sidebar">
-          <div class="status-card">
-            <h3 class="status-title">進行状況</h3>
-            <dl class="status-list">
-              <div class="status-item">
-                <dt>発見数</dt>
-                <dd><span id="foundCount">0</span> / <span id="totalCount">2</span></dd>
-              </div>
-              <div class="status-item">
-                <dt>タイマー</dt>
-                <dd id="timerLabel">00:00</dd>
-              </div>
-            </dl>
-          </div>
-          <div class="hint-card">
-            <h3 class="status-title">ヒント</h3>
-            <p id="hintText">間違いを見つけた場所をクリックしてマークしましょう。</p>
-          </div>
-        </aside>
       </section>
     </main>
+
+    <div id="completionOverlay" class="completion-overlay" aria-hidden="true">
+      <span>全問正解!!</span>
+    </div>
 
     <script type="module" src="./app.js"></script>
   </body>
