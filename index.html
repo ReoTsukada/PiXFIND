@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PiXFIND</title>
+    <meta name="theme-color" content="#ff6f8d" />
+    <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -15,7 +17,10 @@
           <p class="description">
             左右に並んだドット絵から異なるピクセルを見つけ出してください。公式ラインナップを収録しているので、「ゲームを始める」で難易度を選んでお楽しみください。
           </p>
-          <button type="button" id="startButton" class="button button--primary">ゲームを始める</button>
+          <div class="panel-actions">
+            <button type="button" id="startButton" class="button button--primary">ゲームを始める</button>
+            <button type="button" id="installButton" class="button button--ghost button--wide" hidden>アプリをインストール</button>
+          </div>
         </div>
         <footer class="start-footer">
           <p>公式パズルは順次追加予定です。更新情報は PiXiEED の各種チャンネルでお知らせします。</p>
@@ -59,6 +64,10 @@
                 <span class="status-label">タイマー</span>
                 <span class="status-value" id="timerLabel">00:00</span>
               </div>
+              <div class="status-row">
+                <span class="status-label">ミス</span>
+                <span class="status-value" id="mistakeLabel">0 / 3</span>
+              </div>
             </div>
           </div>
         </header>
@@ -81,6 +90,10 @@
 
     <div id="completionOverlay" class="completion-overlay" aria-hidden="true">
       <span>全問正解!!</span>
+    </div>
+
+    <div id="failureOverlay" class="completion-overlay completion-overlay--failure" aria-hidden="true">
+      <span>不正解</span>
     </div>
 
     <script type="module" src="./app.js"></script>
