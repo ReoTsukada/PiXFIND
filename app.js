@@ -14,11 +14,14 @@ const dom = {
   foundCount: document.getElementById('foundCount'),
   totalCount: document.getElementById('totalCount'),
   timerLabel: document.getElementById('timerLabel'),
+  mistakeLabel: document.getElementById('mistakeLabel'),
+  installButton: document.getElementById('installButton'),
   canvasOriginal: document.getElementById('canvasOriginal'),
   canvasChallenge: document.getElementById('canvasChallenge'),
   overlayOriginal: document.getElementById('overlayOriginal'),
   overlayChallenge: document.getElementById('overlayChallenge'),
   completionOverlay: document.getElementById('completionOverlay'),
+  failureOverlay: document.getElementById('failureOverlay'),
 };
 
 const ctx = {
@@ -34,6 +37,7 @@ const ctx = {
 
 const MIN_CLUSTER_PIXELS = 1;
 const MARKER_PADDING = 1;
+const MAX_MISTAKES = 3;
 
 const state = {
   currentDifficulty: 1,
@@ -41,12 +45,18 @@ const state = {
   differences: [],
   found: 0,
   total: 0,
+  mistakes: 0,
+  missMarkers: [],
+  roundCompleted: false,
   imageSize: { width: 0, height: 0 },
   startTimestamp: null,
   timerId: null,
   timerRunning: false,
   audioContext: null,
   completionTimeout: null,
+  failureTimeout: null,
+  resetTimeout: null,
+  installPromptEvent: null,
   officialPuzzles: [],
 };
 
@@ -57,6 +67,8 @@ async function init() {
 
   await loadOfficialPuzzles();
   await handleInitialPuzzleFromUrl();
+
+  updateInstallButtonVisibility();
 
   dom.startButton?.addEventListener('click', () => {
     setActiveScreen('difficulty');
@@ -77,6 +89,10 @@ async function init() {
   dom.resetButton?.addEventListener('click', () => {
     if (!state.currentPuzzle) return;
     resetRound();
+  });
+
+  dom.installButton?.addEventListener('click', () => {
+    void handleInstallButtonClick();
   });
 
   dom.canvasChallenge?.addEventListener('click', event => handleCanvasClick(event, dom.canvasChallenge));
@@ -236,11 +252,51 @@ function setActiveScreen(target) {
       fitCanvasesToFrame();
       clearMarkers();
       state.differences.filter(region => region.found).forEach(region => renderMarker(region));
+      paintAllMissMarkers();
     });
   } else {
     dom.app?.classList.remove('is-playing');
     document.body.classList.remove('is-playing');
   }
+}
+
+function updateInstallButtonVisibility() {
+  if (!dom.installButton) return;
+  const available = Boolean(state.installPromptEvent);
+  dom.installButton.hidden = !available;
+  dom.installButton.disabled = !available;
+}
+
+function handleBeforeInstallPrompt(event) {
+  event.preventDefault();
+  state.installPromptEvent = event;
+  updateInstallButtonVisibility();
+}
+
+async function handleInstallButtonClick() {
+  const promptEvent = state.installPromptEvent;
+  if (!promptEvent || !dom.installButton) {
+    return;
+  }
+
+  try {
+    dom.installButton.disabled = true;
+    promptEvent.prompt();
+    await promptEvent.userChoice.catch(() => undefined);
+  } catch (error) {
+    console.warn('PWA install prompt failed', error);
+  } finally {
+    state.installPromptEvent = null;
+    updateInstallButtonVisibility();
+    if (state.installPromptEvent) {
+      dom.installButton.disabled = false;
+    }
+  }
+}
+
+function handleAppInstalled() {
+  state.installPromptEvent = null;
+  updateInstallButtonVisibility();
 }
 
 function selectDifficulty(level) {
@@ -374,6 +430,13 @@ function prepareGameBoard(originalImage, challengeImage, diffResult, metadata = 
   };
   state.total = state.differences.length;
   state.found = 0;
+  state.mistakes = 0;
+  state.missMarkers = [];
+  state.roundCompleted = false;
+  if (state.resetTimeout != null) {
+    clearTimeout(state.resetTimeout);
+    state.resetTimeout = null;
+  }
 
   if (ctx.original && dom.canvasOriginal) {
     dom.canvasOriginal.width = originalImage.width;
@@ -412,13 +475,23 @@ window.addEventListener('resize', () => {
   fitCanvasesToFrame();
   clearMarkers();
   state.differences.filter(region => region.found).forEach(region => renderMarker(region));
+  paintAllMissMarkers();
 });
 
 function resetRound() {
   hideCompletionOverlay();
+  hideFailureOverlay();
+  if (state.resetTimeout != null) {
+    clearTimeout(state.resetTimeout);
+    state.resetTimeout = null;
+  }
   if (!state.differences.length) {
+    state.mistakes = 0;
+    state.missMarkers = [];
+    state.roundCompleted = false;
     updateProgressLabel();
     dom.timerLabel.textContent = formatTime(0);
+    clearMarkers();
     return;
   }
   state.differences.forEach(region => {
@@ -426,6 +499,9 @@ function resetRound() {
     region.markers = {};
   });
   state.found = 0;
+  state.mistakes = 0;
+  state.missMarkers = [];
+  state.roundCompleted = false;
   updateProgressLabel();
   dom.timerLabel.textContent = formatTime(0);
   clearMarkers();
@@ -438,17 +514,25 @@ function leaveGame(targetScreen) {
   clearCanvas(ctx.original, dom.canvasOriginal);
   clearCanvas(ctx.challenge, dom.canvasChallenge);
   hideCompletionOverlay();
+  hideFailureOverlay();
   state.currentPuzzle = null;
   state.differences = [];
   state.found = 0;
   state.total = 0;
+  state.mistakes = 0;
+  state.missMarkers = [];
+  state.roundCompleted = false;
+  if (state.resetTimeout != null) {
+    clearTimeout(state.resetTimeout);
+    state.resetTimeout = null;
+  }
   setHint('星を選んで、挑戦したい難易度を選んでください。');
   updateProgressLabel();
   setActiveScreen(targetScreen);
 }
 
 function handleCanvasClick(event, canvas) {
-  if (!state.differences.length) {
+  if (!state.differences.length || state.roundCompleted) {
     return;
   }
   const targetCanvas = canvas ?? dom.canvasChallenge;
@@ -458,7 +542,23 @@ function handleCanvasClick(event, canvas) {
 
   const region = state.differences.find(diff => !diff.found && isPointInsideRegion(diff, x, y));
   if (!region) {
-    setHint(`まだ見つけていない間違いはあと ${state.total - state.found} 箇所です。`);
+    addMissMarker(targetCanvas, x, y);
+    state.mistakes = Math.min(state.mistakes + 1, MAX_MISTAKES);
+    updateMistakeLabel();
+    const remaining = MAX_MISTAKES - state.mistakes;
+    if (state.mistakes >= MAX_MISTAKES) {
+      setHint('ミスが3回に達したためラウンドをリセットします。');
+      state.roundCompleted = true;
+      showFailureOverlay();
+      if (state.resetTimeout != null) {
+        clearTimeout(state.resetTimeout);
+      }
+      state.resetTimeout = window.setTimeout(() => {
+        resetRound();
+      }, 1700);
+    } else {
+      setHint(`まだ見つけていない間違いはあと ${state.total - state.found} 箇所です。ミスはあと ${remaining} 回までです。`);
+    }
     return;
   }
 
@@ -470,6 +570,7 @@ function handleCanvasClick(event, canvas) {
   playSuccessSound();
 
   if (state.found >= state.total) {
+    state.roundCompleted = true;
     stopTimer();
     setHint('全ての間違いを発見しました！おめでとうございます。');
     showCompletionOverlay();
@@ -487,27 +588,28 @@ function renderMarker(region) {
 
   overlays.forEach(({ overlay, canvas }) => {
     if (!overlay || !canvas) return;
-    const marker = document.createElement('div');
-    marker.className = 'marker';
-    const paddedMinX = Math.max(0, region.minX - MARKER_PADDING);
-    const paddedMaxX = Math.min(state.imageSize.width - 1, region.maxX + MARKER_PADDING);
-    const paddedMinY = Math.max(0, region.minY - MARKER_PADDING);
-    const paddedMaxY = Math.min(state.imageSize.height - 1, region.maxY + MARKER_PADDING);
-    const rect = overlay.getBoundingClientRect();
     const displayWidth = canvas.clientWidth;
     const displayHeight = canvas.clientHeight;
-    const offsetX = (rect.width - displayWidth) / 2;
-    const offsetY = (rect.height - displayHeight) / 2;
+    const overlayWidth = overlay.clientWidth;
+    const overlayHeight = overlay.clientHeight;
+    if (!displayWidth || !displayHeight || !overlayWidth || !overlayHeight) return;
+
+    const marker = document.createElement('div');
+    marker.className = 'marker';
+
+    const offsetX = (overlayWidth - displayWidth) / 2;
+    const offsetY = (overlayHeight - displayHeight) / 2;
     const scaleX = displayWidth / state.imageSize.width;
     const scaleY = displayHeight / state.imageSize.height;
-    const left = offsetX + paddedMinX * scaleX;
-    const top = offsetY + paddedMinY * scaleY;
-    const width = (paddedMaxX - paddedMinX + 1) * scaleX;
-    const height = (paddedMaxY - paddedMinY + 1) * scaleY;
-    marker.style.left = `${left}px`;
-    marker.style.top = `${top}px`;
-    marker.style.width = `${Math.max(width, 8)}px`;
-    marker.style.height = `${Math.max(height, 8)}px`;
+    const centerX = region.minX + (region.maxX - region.minX + 1) / 2;
+    const centerY = region.minY + (region.maxY - region.minY + 1) / 2;
+    const sizeScale = Math.max(0.6, (scaleX + scaleY) / 2);
+    const markerSize = Math.max(18, Math.min(42, sizeScale * 28));
+
+    marker.style.width = `${markerSize}px`;
+    marker.style.height = `${markerSize}px`;
+    marker.style.left = `${offsetX + centerX * scaleX - markerSize / 2}px`;
+    marker.style.top = `${offsetY + centerY * scaleY - markerSize / 2}px`;
     overlay.append(marker);
     if (!region.markers) {
       region.markers = {};
@@ -518,6 +620,53 @@ function renderMarker(region) {
       region.markers.challenge = marker;
     }
   });
+}
+
+function addMissMarker(canvas, imageX, imageY) {
+  const target = canvas === dom.canvasOriginal ? 'original' : canvas === dom.canvasChallenge ? 'challenge' : null;
+  if (!target || !state.imageSize.width || !state.imageSize.height) {
+    return;
+  }
+  const record = { target, x: imageX, y: imageY };
+  state.missMarkers.push(record);
+  paintMissMarker(record);
+}
+
+function paintMissMarker(record) {
+  const { target, x, y } = record;
+  const canvas = target === 'original' ? dom.canvasOriginal : dom.canvasChallenge;
+  const overlay = target === 'original' ? dom.overlayOriginal : dom.overlayChallenge;
+  if (!canvas || !overlay || !state.imageSize.width || !state.imageSize.height) {
+    return;
+  }
+
+  const displayWidth = canvas.clientWidth;
+  const displayHeight = canvas.clientHeight;
+  const overlayWidth = overlay.clientWidth;
+  const overlayHeight = overlay.clientHeight;
+  if (!displayWidth || !displayHeight || !overlayWidth || !overlayHeight) {
+    return;
+  }
+
+  const offsetX = (overlayWidth - displayWidth) / 2;
+  const offsetY = (overlayHeight - displayHeight) / 2;
+  const scaleX = displayWidth / state.imageSize.width;
+  const scaleY = displayHeight / state.imageSize.height;
+  const sizeScale = Math.max(0.6, (scaleX + scaleY) / 2);
+  const markerSize = Math.max(18, Math.min(42, sizeScale * 28));
+
+  const marker = document.createElement('div');
+  marker.className = 'miss-marker';
+  marker.style.width = `${markerSize}px`;
+  marker.style.height = `${markerSize}px`;
+  marker.style.left = `${offsetX + x * scaleX - markerSize / 2}px`;
+  marker.style.top = `${offsetY + y * scaleY - markerSize / 2}px`;
+  overlay.append(marker);
+}
+
+function paintAllMissMarkers() {
+  if (!state.missMarkers.length) return;
+  state.missMarkers.forEach(record => paintMissMarker(record));
 }
 
 function clearMarkers() {
@@ -554,6 +703,26 @@ function hideCompletionOverlay() {
   dom.completionOverlay.setAttribute('aria-hidden', 'true');
   clearTimeout(state.completionTimeout ?? undefined);
   state.completionTimeout = null;
+}
+
+function showFailureOverlay() {
+  if (!dom.failureOverlay) return;
+  dom.failureOverlay.classList.add('is-visible');
+  dom.failureOverlay.setAttribute('aria-hidden', 'false');
+  clearTimeout(state.failureTimeout ?? undefined);
+  state.failureTimeout = window.setTimeout(() => {
+    hideFailureOverlay();
+  }, 1600);
+}
+
+function hideFailureOverlay() {
+  if (!dom.failureOverlay) return;
+  dom.failureOverlay.classList.remove('is-visible');
+  dom.failureOverlay.setAttribute('aria-hidden', 'true');
+  if (state.failureTimeout != null) {
+    clearTimeout(state.failureTimeout);
+    state.failureTimeout = null;
+  }
 }
 
 function startTimer() {
@@ -824,6 +993,12 @@ function clearCanvas(context, canvas) {
 function updateProgressLabel() {
   dom.foundCount.textContent = String(state.found);
   dom.totalCount.textContent = String(state.total);
+  updateMistakeLabel();
+}
+
+function updateMistakeLabel() {
+  if (!dom.mistakeLabel) return;
+  dom.mistakeLabel.textContent = `${state.mistakes} / ${MAX_MISTAKES}`;
 }
 
 function setHint(message) {
@@ -875,5 +1050,20 @@ function createStarLabel(level) {
   const blanks = '☆☆☆';
   return stars.slice(0, clamped) + blanks.slice(clamped);
 }
+
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) {
+    return;
+  }
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(error => {
+      console.warn('Service worker registration failed', error);
+    });
+  });
+}
+
+registerServiceWorker();
+window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+window.addEventListener('appinstalled', handleAppInstalled);
 
 init();
